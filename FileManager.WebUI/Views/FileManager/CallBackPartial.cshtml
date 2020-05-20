@@ -1,0 +1,144 @@
+﻿@model FileManager.WebUI.Models.FileManagerModel
+
+@Html.DevExpress().FileManager(
+    settings => {
+        settings.Name = "fileManager";
+        settings.CallbackRouteValues = new { Controller = "FileManager", Action = "CallBackPartial" };
+        settings.CustomActionRouteValues = new { Controller = "FileManager", Action = "CustomToolbarAction" };
+        settings.DownloadRouteValues = new { Controller = "FileManager", Action = "DownloadFiles" };
+
+        settings.Width = Unit.Percentage(100);
+        settings.Height = Unit.Percentage(100);
+
+        settings.FileUploading = (s, e) => {
+            Model.UploadHandler(e.InputStream, e.File.FullName);
+        };
+
+        settings.Theme = "MaterialCompactOrange";
+        settings.Settings.EnableClientSideItemMetadata = true;
+        settings.SettingsEditing.AllowCreate = true;
+        settings.SettingsEditing.AllowDelete = true;
+        settings.SettingsEditing.AllowMove = true;
+        settings.SettingsEditing.AllowRename = true;
+        settings.SettingsEditing.AllowDownload = true;
+        settings.SettingsContextMenu.Enabled = true;
+        settings.SettingsFileList.View = FileListView.Details;
+        settings.SettingsFileList.ShowFolders = true;
+        settings.SettingsUpload.ValidationSettings.MaxFileSize = 10000000;
+        settings.SettingsAdaptivity.Enabled = true;
+
+        #region ContextMenu Commands
+
+        foreach(var command in Model.Commands.Where(x=>x.Position == FileManager.Model.Enum.CommandPosition.ContextMenu
+            || x.Position == FileManager.Model.Enum.CommandPosition.ToolBarAndContextMenu))
+        {
+            var customCommand = new FileManagerToolbarCustomButton();
+            customCommand.Text = command.Text;
+            customCommand.CommandName = command.Name;
+            customCommand.Image.IconID = command.IconId;
+            customCommand.BeginGroup = true;
+            settings.SettingsContextMenu.Items.Add(customCommand);
+        }
+
+        settings.SettingsContextMenu.Items.Add(new FileManagerToolbarMoveButton());
+        settings.SettingsContextMenu.Items.Add(new FileManagerToolbarRenameButton());
+        settings.SettingsContextMenu.Items.Add(new FileManagerToolbarDeleteButton());
+        settings.SettingsContextMenu.Items.Add(new FileManagerToolbarRefreshButton());
+
+        #endregion
+
+        #region ToolBar Commands
+
+        foreach(var command in Model.Commands.Where(x=>x.Position == FileManager.Model.Enum.CommandPosition.ToolBar
+            || x.Position == FileManager.Model.Enum.CommandPosition.ToolBarAndContextMenu))
+        {
+            var customCommand = new FileManagerToolbarCustomButton();
+            customCommand.Text = command.Text;
+            customCommand.CommandName = command.Name;
+            customCommand.Image.IconID = command.IconId;
+            customCommand.BeginGroup = true;
+            settings.SettingsToolbar.Items.Add(customCommand);
+        }
+
+        settings.SettingsToolbar.Items.Add(new FileManagerToolbarRenameButton());
+        settings.SettingsToolbar.Items.Add(new FileManagerToolbarDeleteButton());
+        settings.SettingsToolbar.Items.Add(new FileManagerToolbarRefreshButton());
+        settings.SettingsToolbar.Items.Add(new FileManagerToolbarDownloadButton());
+
+        #endregion
+
+        #region Columns
+
+        var item = settings.SettingsFileList.DetailsViewSettings.Columns.Add();
+        item.VisibleIndex = 0;
+        item.FileInfoType = FileInfoType.Thumbnail;
+        item.Caption = " ";
+
+        var item2 = settings.SettingsFileList.DetailsViewSettings.Columns.Add();
+        item2.VisibleIndex = 1;
+        item2.FileInfoType = FileInfoType.FileName;
+        item2.Caption = "Name";
+
+        var item3 = settings.SettingsFileList.DetailsViewSettings.Columns.Add();
+        item3.VisibleIndex = 2;
+        item3.Caption = "Size";
+        item3.SetItemTemplateContent(e =>
+        {
+            ViewContext.Writer.Write(GetFileSizeString(e.Item.FullName,e.Item is FileManagerFolder));
+        });
+
+        #endregion
+
+        settings.CustomJSProperties = (s, e) => {
+            var manager = s as MVCxFileManager;
+            var items = Model.Commands.Select(x => new { name = x.Name, extensions = x.AllowedExtensions });
+            e.Properties["cpCommandDictionary"] = Newtonsoft.Json.JsonConvert.SerializeObject(items);
+        };
+
+        settings.ClientSideEvents.CustomCommand = "fileManagerHelper.OnCustomCommand";
+        settings.ClientSideEvents.ToolbarUpdating = "fileManagerHelper.OnToolBarUpdating";
+        settings.ClientSideEvents.FileDownloading = "function (s,e) { $('#downloadPath').val(fileManagerHelper.GetCurrentItemPath()); }";
+    }
+).BindToFolder(Model.RootPath).GetHtml()
+
+@functions{
+
+    long DirectorySize(DirectoryInfo dInfo, bool includeSubDir)
+    {
+        long totalSize = dInfo.EnumerateFiles()
+                     .Sum(file => file.Length);
+        if (includeSubDir)
+        {
+            totalSize += dInfo.EnumerateDirectories()
+                     .Sum(dir => DirectorySize(dir, true));
+        }
+        return totalSize;
+    }
+
+    string GetFileSizeString(string filePath, bool isFolder)
+    {
+        var fullPath = Server.MapPath(filePath);
+        long size = 0;
+
+        if (isFolder)
+        {
+            size = DirectorySize(new DirectoryInfo(fullPath), true);
+        }
+        else
+        {
+            size = new System.IO.FileInfo(fullPath).Length;
+        }
+
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size = size / 1024;
+        }
+
+        string result = String.Format("{0:0.##} {1}", size, sizes[order]);
+
+        return result;
+    }
+}

@@ -1,0 +1,90 @@
+﻿@model FileManager.WebUI.Models.FileManagerModel
+
+@section AdditionalResources{
+
+<script>
+    var fileManagerHelper = {
+        GetCurrentItemPath: function () {
+            var isFileSelected = fileManager.GetActiveAreaName() == "Files";
+            var item = fileManager.GetSelectedItem();
+            if (!item)
+                return fileManager.GetCurrentPath();
+
+            var relativePath = "";
+            if (item.isFolder) {
+                relativePath = fileManager.GetCurrentPath() + "\\" + item.name;
+            }
+            else {
+                relativePath = isFileSelected ? fileManager.GetSelectedFile().GetFullName() : fileManager.GetCurrentPath();
+            }
+
+            return relativePath;
+        },
+        OnCustomCommand: function (s, e) {
+            var args = e.commandName.split("-");
+            switch (args[0]) {
+                case "Copy":
+                         $.ajax({
+                            type: 'POST',
+                            url: '@Url.Action("Copy", "Command")',
+                            data: {
+                                relativePath:  fileManagerHelper.GetCurrentItemPath(),
+                            },
+                            success: function (msg) {
+                                fileManager.PerformCallback();
+                            },
+                            error: function (request, status, error) {
+                                  alert("Internal Server Error");
+                            }
+                        });
+                    break;
+                case "CreateSubFolder":
+                    var folder = prompt("Please enter subfolder name");
+                    if (folder != null) {
+                        $.ajax({
+                            type: 'POST',
+                            url: '@Url.Action("CreateSubFolder","Command")',
+                            data: {
+                                relativePath:  fileManagerHelper.GetCurrentItemPath(),
+                                folderName: folder
+                            },
+                            success: function (msg) {
+                                fileManager.PerformCallback();
+                            },
+                            error: function (request, status, error) {
+                                alert("Internal Server Error");
+                            }
+                        });
+                    }
+                    else {
+                        alert('Folder name can not be empty')
+                    }
+            }
+        },
+        OnToolBarUpdating: function (s, e) {
+            var extension = "";
+            var item = fileManager.GetSelectedItem();
+            if (item && !item.isFolder)
+                extension = ("." + item.name.substr(item.name.lastIndexOf('.') + 1));
+
+            if (!fileManager.cpCommandDictionary || typeof (extension) == "undefined")
+                return;
+
+            var dictionary = JSON.parse(fileManager.cpCommandDictionary);
+
+            for (var i = 0; i < dictionary.length; i++) {
+                var command = dictionary[i];
+                var show = command.extensions.includes(extension) || command.extensions.includes("*");
+                fileManager.GetContextMenu().GetItemByName(command.name).SetVisible(show);
+                fileManager.GetToolbar().GetItemByName(command.name).SetVisible(show);
+            }
+        },
+    }
+
+</script>
+}
+
+@using(Html.BeginForm()) {
+    <input type="hidden" name="downloadPath" id="downloadPath" />  
+    @Html.Partial("CallBackPartial", Model)
+}
