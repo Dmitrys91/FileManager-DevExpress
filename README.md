@@ -1,4 +1,4 @@
-1. Open the file solution "FileManager" in Visual Studio
+1. Open the file solution "FileManager.sln" in Visual Studio
 
 2. Perform package recovery for each project in the solution, if necessary
  
