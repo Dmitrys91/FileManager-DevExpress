@@ -1,8 +1,8 @@
 1. Open the file solution "FileManager.sln" in Visual Studio
 
-2. Perform package recovery for each project in the solution, if necessary
+2. Perform NuGet package restore if necessary
  
-3. Clean and assemble the solution without errors.
+3. Clean and Build the solution without errors.
  
 4. Select the project FileManager.WebUI, right-click, and select "publish." Next, follow the instructions to publish the web application to the selected folder.
 
@@ -14,4 +14,4 @@
 7. The next step is to set the necessary permissions for the folder where our web application files are published. You need to select the folder with the right mouse button, select the "Security" tab, and add full access to the services of "IIS" and "IIS_IUSRS"
 
 
-8. The last step is to select our site in the IIS site tree, and click "Browse." If everything is done correctly, the site will open in a browser and the file manager interface will immediately appear
+8. The last step is to select our site in the IIS sites tree, and click "Browse." If everything is done correctly, the site will open in a browser and the file manager interface will immediately appear
